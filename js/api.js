@@ -13,8 +13,11 @@ async function readJson(res) {
   return json.data;
 }
 
+// The group code is sent with every request (set once by the app).
+let groupCode = '';
+
 async function get(action, params = {}) {
-  const query = new URLSearchParams({ action, ...params, t: Date.now() });
+  const query = new URLSearchParams({ action, ...(groupCode ? { code: groupCode } : {}), ...params, t: Date.now() });
   const res = await fetch(`${API_URL}?${query}`);
   return readJson(res);
 }
@@ -25,13 +28,15 @@ async function post(action, payload = {}) {
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, ...payload }),
+    body: JSON.stringify({ action, code: groupCode, ...payload }),
   });
   return readJson(res);
 }
 
 export const api = {
   isConfigured: () => API_URL && !API_URL.startsWith('PASTE_'),
+  setCode: (code) => { groupCode = code || ''; },
+  checkCode: (code) => get('checkCode', { code }),
 
   // read
   getData: (pin) => get('data', pin ? { pin } : {}),
@@ -47,9 +52,13 @@ export const api = {
   setWinner: (pin, eventId, winner, dishOptions) => post('setWinner', { pin, eventId, winner, dishOptions }),
   setStage: (pin, eventId, stage) => post('setStage', { pin, eventId, stage }),
   updateEventInfo: (pin, eventId, fields) => post('updateEventInfo', { pin, eventId, ...fields }),
+  updateEventSettings: (pin, eventId, fields) => post('updateEventSettings', { pin, eventId, ...fields }),
   splitBill: (pin, eventId, total, extra = {}) => post('splitBill', { pin, eventId, total, ...extra }),
   finishEvent: (pin, eventId, extra = {}) => post('finishEvent', { pin, eventId, ...extra }),
   addImage: (pin, eventId, file) => post('addImage', { pin, eventId, ...file }),
   recordPayment: (pin, personId, amount, note) => post('recordPayment', { pin, personId, amount, note }),
   addCharge: (pin, personId, amount, note) => post('addCharge', { pin, personId, amount, note }),
+  deleteEvent: (pin, eventId) => post('deleteEvent', { pin, eventId }),
+  deleteEntry: (pin, entryId) => post('deleteEntry', { pin, entryId }),
+  saveMenu: (pin, menu) => post('saveMenu', { pin, menu }),
 };
